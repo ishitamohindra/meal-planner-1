@@ -33,4 +33,6 @@ export default async (req) => {
 
 export const config = {
   path: '/api/generate',
+  method: 'POST',
+  timeout: 60,
 };
