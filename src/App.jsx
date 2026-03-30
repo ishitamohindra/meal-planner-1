@@ -120,6 +120,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('groceries');
   const [groceries, setGroceries] = useState(() => getAllIngredients());
   const [mealPlan, setMealPlan] = useState(null);
+  const [selectedMeals, setSelectedMeals] = useState({ breakfast: 0, lunch: 0, dinner: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -132,6 +133,7 @@ export default function App() {
     try {
       const result = await generateMealPlan(groceries);
       setMealPlan(result.mealOptions);
+      setSelectedMeals({ breakfast: 0, lunch: 0, dinner: 0 });
       setScreen('plan');
       setActiveTab('plan');
     } catch (err) {
@@ -223,7 +225,7 @@ export default function App() {
               exit={{ opacity: 0, x: 20 }}
             >
               {mealPlan ? (
-                <WeeklyPlan mealOptions={mealPlan} />
+                <WeeklyPlan mealOptions={mealPlan} selectedMeals={selectedMeals} onSelectMeal={setSelectedMeals} />
               ) : (
                 <div className="text-center py-16 space-y-3">
                   <UtensilsCrossed className="w-12 h-12 text-charcoal-light/20 mx-auto" />
@@ -249,7 +251,7 @@ export default function App() {
               exit={{ opacity: 0, x: 20 }}
             >
               {mealPlan ? (
-                <GapAnalysis mealOptions={mealPlan} />
+                <GapAnalysis mealOptions={mealPlan} selectedMeals={selectedMeals} />
               ) : (
                 <div className="text-center py-16 space-y-3">
                   <BarChart3 className="w-12 h-12 text-charcoal-light/20 mx-auto" />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, CloudSun, Moon } from 'lucide-react';
+import { Sun, CloudSun, Moon, Check } from 'lucide-react';
 import MealCard from './MealCard';
 
 const MEAL_TYPES = [
@@ -9,12 +9,17 @@ const MEAL_TYPES = [
   { id: 'dinner', label: 'Dinner', icon: Moon },
 ];
 
-export default function WeeklyPlan({ mealOptions }) {
+export default function WeeklyPlan({ mealOptions, selectedMeals, onSelectMeal }) {
   const [selectedType, setSelectedType] = useState('breakfast');
 
   if (!mealOptions) return null;
 
   const meals = mealOptions[selectedType] || [];
+  const selectedIndex = selectedMeals[selectedType];
+
+  const handleSelect = (index) => {
+    onSelectMeal((prev) => ({ ...prev, [selectedType]: index }));
+  };
 
   return (
     <div className="space-y-4">
@@ -22,6 +27,7 @@ export default function WeeklyPlan({ mealOptions }) {
       <div className="flex gap-2">
         {MEAL_TYPES.map(({ id, label, icon: Icon }) => {
           const isActive = selectedType === id;
+          const hasSelection = selectedMeals[id] !== undefined;
           return (
             <button
               key={id}
@@ -35,19 +41,22 @@ export default function WeeklyPlan({ mealOptions }) {
             >
               <Icon className="w-4 h-4" />
               {label}
+              {hasSelection && !isActive && (
+                <Check className="w-3 h-3 text-sage-dark" />
+              )}
             </button>
           );
         })}
       </div>
 
       {/* Section header */}
-      <div className="flex items-baseline gap-2">
+      <div>
         <h3 className="font-display text-xl font-bold text-charcoal capitalize">
           {selectedType} Options
         </h3>
-        <span className="text-sm text-charcoal-light/50">
-          {meals.length} choices
-        </span>
+        <p className="text-sm text-charcoal-light/50 mt-0.5">
+          Tap a meal to select it for your day
+        </p>
       </div>
 
       {/* Meal cards */}
@@ -60,9 +69,35 @@ export default function WeeklyPlan({ mealOptions }) {
           transition={{ duration: 0.2 }}
           className="space-y-3"
         >
-          {meals.map((meal, i) => (
-            <MealCard key={`${selectedType}-${i}`} meal={{ ...meal, type: selectedType }} index={i} />
-          ))}
+          {meals.map((meal, i) => {
+            const isSelected = selectedIndex === i;
+            return (
+              <div key={`${selectedType}-${i}`} className="relative">
+                {/* Selection indicator */}
+                <button
+                  onClick={() => handleSelect(i)}
+                  className={`absolute top-4 right-4 z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center
+                             transition-all duration-200
+                             ${isSelected
+                               ? 'bg-terracotta border-terracotta text-white scale-110'
+                               : 'bg-white border-charcoal/20 hover:border-terracotta/50'
+                             }`}
+                >
+                  {isSelected && <Check className="w-3.5 h-3.5" />}
+                </button>
+                <div
+                  onClick={() => handleSelect(i)}
+                  className={`cursor-pointer rounded-3xl transition-all duration-200
+                             ${isSelected
+                               ? 'ring-2 ring-terracotta ring-offset-2'
+                               : ''
+                             }`}
+                >
+                  <MealCard meal={{ ...meal, type: selectedType }} index={i} />
+                </div>
+              </div>
+            );
+          })}
         </motion.div>
       </AnimatePresence>
 

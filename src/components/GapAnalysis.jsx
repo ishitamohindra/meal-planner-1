@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, CheckCircle, ShoppingCart, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ShoppingCart, TrendingUp, Sun, CloudSun, Moon } from 'lucide-react';
 import { estimateMealNutrition, RDA, NUTRIENT_LABELS, MACRO_KEYS, MICRO_KEYS, VEG_RISK_NUTRIENTS } from '../utils/nutritionData';
 import NutritionPanel from './NutritionPanel';
 
@@ -15,55 +15,50 @@ const SUPPLEMENT_SUGGESTIONS = {
   fiber: { foods: ['oats', 'rajma', 'chole', 'brown rice', 'vegetables'], supplement: 'Increase whole grains and legume portions' },
 };
 
-export default function GapAnalysis({ mealOptions }) {
+const MEAL_TYPE_ICONS = { breakfast: Sun, lunch: CloudSun, dinner: Moon };
+
+export default function GapAnalysis({ mealOptions, selectedMeals }) {
   const analysis = useMemo(() => {
     if (!mealOptions) return null;
 
-    // Sum all meals across the options (1 breakfast + 1 lunch + 1 dinner as a representative day)
-    const dailyTotals = {
+    // Build the day's nutrition from selected meals
+    const dayTotals = {
       calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0,
       iron: 0, calcium: 0, vitC: 0, vitB12: 0, zinc: 0, folate: 0, vitD: 0,
     };
 
-    let mealCount = 0;
-    // Average across all options for each meal type
+    const selectedDetails = [];
+
     for (const type of ['breakfast', 'lunch', 'dinner']) {
       const meals = mealOptions[type] || [];
-      const typeTotals = { ...dailyTotals };
-      for (const key of Object.keys(typeTotals)) typeTotals[key] = 0;
+      const idx = selectedMeals[type] ?? 0;
+      const meal = meals[idx];
+      if (!meal) continue;
 
-      for (const meal of meals) {
-        const mealNutrition = estimateMealNutrition(meal.ingredients || []);
-        for (const key of Object.keys(typeTotals)) {
-          typeTotals[key] += mealNutrition[key];
-        }
-        mealCount++;
-      }
+      const nutrition = estimateMealNutrition(meal.ingredients || []);
+      selectedDetails.push({ type, meal, nutrition });
 
-      // Average for this meal type
-      const count = meals.length || 1;
-      for (const key of Object.keys(dailyTotals)) {
-        dailyTotals[key] += typeTotals[key] / count;
+      for (const key of Object.keys(dayTotals)) {
+        dayTotals[key] += nutrition[key];
       }
     }
 
-    // dailyTotals now represents an average day
-    const dailyAvg = {};
-    for (const key of Object.keys(dailyTotals)) {
-      dailyAvg[key] = Math.round(dailyTotals[key] * 10) / 10;
+    // Round
+    for (const key of Object.keys(dayTotals)) {
+      dayTotals[key] = Math.round(dayTotals[key] * 10) / 10;
     }
 
-    // Identify gaps (< 70% of RDA on average)
+    // Identify gaps (< 70% of RDA)
     const gaps = [];
     const adequate = [];
     const allKeys = [...MACRO_KEYS, ...MICRO_KEYS];
 
     for (const key of allKeys) {
-      const pct = (dailyAvg[key] / RDA[key].value) * 100;
+      const pct = (dayTotals[key] / RDA[key].value) * 100;
       const entry = {
         nutrient: key,
         label: NUTRIENT_LABELS[key],
-        dailyAvg: dailyAvg[key],
+        value: dayTotals[key],
         rda: RDA[key].value,
         unit: RDA[key].unit,
         pct: Math.round(pct),
@@ -77,25 +72,51 @@ export default function GapAnalysis({ mealOptions }) {
       }
     }
 
-    // Sort gaps by severity
     gaps.sort((a, b) => a.pct - b.pct);
 
-    return { weeklyTotals, dailyAvg, gaps, adequate, mealCount };
-  }, [weekPlan]);
+    return { dayTotals, gaps, adequate, selectedDetails };
+  }, [mealOptions, selectedMeals]);
 
   if (!analysis) return null;
 
   return (
     <div className="space-y-6">
-      {/* Weekly overview */}
+      {/* Selected meals summary */}
+      <div className="card p-4">
+        <h3 className="font-display text-lg font-bold text-charcoal mb-3">
+          Your Day's Meals
+        </h3>
+        <div className="space-y-2">
+          {analysis.selectedDetails.map(({ type, meal, nutrition }) => {
+            const Icon = MEAL_TYPE_ICONS[type];
+            return (
+              <div key={type} className="flex items-center gap-3 bg-cream-dark rounded-xl p-3">
+                <div className="w-8 h-8 rounded-full bg-terracotta/10 flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 text-terracotta" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-charcoal truncate">{meal.name}</p>
+                  <p className="text-xs text-charcoal-light/50 capitalize">{type}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-charcoal">{Math.round(nutrition.calories)}</p>
+                  <p className="text-[10px] text-charcoal-light/50">kcal</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Daily totals */}
       <div className="card p-4">
         <h3 className="font-display text-lg font-bold text-charcoal mb-1">
-          Weekly Nutrition Summary
+          Daily Nutrition
         </h3>
         <p className="text-sm text-charcoal-light/60 mb-4">
-          Averaged across {analysis.mealCount} meals over 7 days
+          Based on your selected breakfast + lunch + dinner
         </p>
-        <NutritionPanel nutrition={analysis.dailyAvg} title="Daily Average" />
+        <NutritionPanel nutrition={analysis.dayTotals} title={null} />
       </div>
 
       {/* Gaps */}
@@ -104,11 +125,11 @@ export default function GapAnalysis({ mealOptions }) {
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-5 h-5 text-terracotta" />
             <h3 className="font-display text-lg font-bold text-charcoal">
-              Nutritional Gaps
+              What's Missing
             </h3>
           </div>
           <p className="text-sm text-charcoal-light/60 mb-4">
-            These nutrients are below 70% of recommended daily intake
+            Below 70% of daily recommended intake
           </p>
 
           <div className="space-y-4">
@@ -145,7 +166,7 @@ export default function GapAnalysis({ mealOptions }) {
                   </div>
 
                   <p className="text-xs text-charcoal-light/70">
-                    Getting ~{Math.round(gap.dailyAvg)}{gap.unit}/day vs {gap.rda}{gap.unit} recommended
+                    Getting ~{Math.round(gap.value)}{gap.unit} vs {gap.rda}{gap.unit} recommended
                   </p>
 
                   {suggestion && (
