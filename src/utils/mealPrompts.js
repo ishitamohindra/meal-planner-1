@@ -53,15 +53,10 @@ ${list}
 Please generate a complete 7-day meal plan (breakfast, lunch, dinner) using ONLY these ingredients. Include estimated quantities in grams for each ingredient per meal. Make the meals varied, nutritious, and practical for weekday home cooking.`;
 }
 
-export async function generateMealPlan(groceries, apiKey) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+export async function generateMealPlan(groceries) {
+  const response = await fetch('/api/generate', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 8000,

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChefHat, UtensilsCrossed, BarChart3, ShoppingBasket, ArrowRight, Loader2, Key, X } from 'lucide-react';
+import { ChefHat, UtensilsCrossed, BarChart3, ShoppingBasket, ArrowRight, Loader2 } from 'lucide-react';
 import GroceryInput from './components/GroceryInput';
 import WeeklyPlan from './components/WeeklyPlan';
 import GapAnalysis from './components/GapAnalysis';
@@ -44,56 +44,6 @@ function LoadingOverlay() {
           />
         ))}
       </div>
-    </motion.div>
-  );
-}
-
-function ApiKeyModal({ onSubmit, onClose }) {
-  const [key, setKey] = useState('');
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-charcoal/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
-    >
-      <motion.div
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        exit={{ y: 100 }}
-        className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Key className="w-5 h-5 text-terracotta" />
-            <h3 className="font-display text-lg font-bold text-charcoal">API Key</h3>
-          </div>
-          <button onClick={onClose} className="p-1 hover:bg-cream-dark rounded-full transition-colors">
-            <X className="w-5 h-5 text-charcoal-light" />
-          </button>
-        </div>
-        <p className="text-sm text-charcoal-light/70 mb-4">
-          Enter your Anthropic API key to generate meal plans. Your key stays in your browser and is never stored on any server.
-        </p>
-        <input
-          type="password"
-          placeholder="sk-ant-..."
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          className="w-full px-4 py-3 bg-cream rounded-2xl border border-charcoal/10
-                     text-sm placeholder:text-charcoal-light/40 focus:outline-none
-                     focus:border-terracotta/40 focus:ring-2 focus:ring-terracotta/10
-                     transition-all mb-4 font-mono"
-        />
-        <button
-          onClick={() => key.trim() && onSubmit(key.trim())}
-          disabled={!key.trim()}
-          className="btn-primary w-full"
-        >
-          Save & Generate
-        </button>
-      </motion.div>
     </motion.div>
   );
 }
@@ -171,55 +121,23 @@ export default function App() {
   const [weekPlan, setWeekPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKey, setApiKey] = useState(() => {
-    try { return localStorage.getItem('pantry_api_key') || ''; } catch { return ''; }
-  });
 
   const handleGenerate = useCallback(async () => {
     if (groceries.length === 0) return;
-
-    if (!apiKey) {
-      setShowApiKeyModal(true);
-      return;
-    }
 
     setLoading(true);
     setError(null);
 
     try {
-      const result = await generateMealPlan(groceries, apiKey);
+      const result = await generateMealPlan(groceries);
       setWeekPlan(result.weekPlan);
       setScreen('plan');
       setActiveTab('plan');
     } catch (err) {
       setError(err.message);
-      // If auth error, prompt for key again
-      if (err.message.includes('401') || err.message.includes('auth') || err.message.includes('key')) {
-        setShowApiKeyModal(true);
-      }
     } finally {
       setLoading(false);
     }
-  }, [groceries, apiKey]);
-
-  const handleApiKeySubmit = useCallback((key) => {
-    setApiKey(key);
-    try { localStorage.setItem('pantry_api_key', key); } catch {}
-    setShowApiKeyModal(false);
-    // Auto-generate after key entry
-    setTimeout(() => {
-      setLoading(true);
-      setError(null);
-      generateMealPlan(groceries, key)
-        .then((result) => {
-          setWeekPlan(result.weekPlan);
-          setScreen('plan');
-          setActiveTab('plan');
-        })
-        .catch((err) => setError(err.message))
-        .finally(() => setLoading(false));
-    }, 100);
   }, [groceries]);
 
   // Landing screen
@@ -231,7 +149,7 @@ export default function App() {
     <div className="min-h-[100dvh] pb-20">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-cream/90 backdrop-blur-xl border-b border-charcoal/5">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center">
           <button
             onClick={() => setScreen('landing')}
             className="flex items-center gap-2"
@@ -241,15 +159,6 @@ export default function App() {
               Pantry to <span className="text-terracotta">Plate</span>
             </span>
           </button>
-          {apiKey && (
-            <button
-              onClick={() => setShowApiKeyModal(true)}
-              className="p-2 hover:bg-cream-dark rounded-full transition-colors"
-              title="Change API key"
-            >
-              <Key className="w-4 h-4 text-charcoal-light/40" />
-            </button>
-          )}
         </div>
       </header>
 
@@ -395,15 +304,9 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Modals & overlays */}
+      {/* Overlays */}
       <AnimatePresence>
         {loading && <LoadingOverlay />}
-        {showApiKeyModal && (
-          <ApiKeyModal
-            onSubmit={handleApiKeySubmit}
-            onClose={() => setShowApiKeyModal(false)}
-          />
-        )}
       </AnimatePresence>
     </div>
   );
