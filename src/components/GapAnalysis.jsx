@@ -15,31 +15,42 @@ const SUPPLEMENT_SUGGESTIONS = {
   fiber: { foods: ['oats', 'rajma', 'chole', 'brown rice', 'vegetables'], supplement: 'Increase whole grains and legume portions' },
 };
 
-export default function GapAnalysis({ weekPlan }) {
+export default function GapAnalysis({ mealOptions }) {
   const analysis = useMemo(() => {
-    if (!weekPlan || weekPlan.length === 0) return null;
+    if (!mealOptions) return null;
 
-    // Sum all meals across the week
-    const weeklyTotals = {
+    // Sum all meals across the options (1 breakfast + 1 lunch + 1 dinner as a representative day)
+    const dailyTotals = {
       calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0,
       iron: 0, calcium: 0, vitC: 0, vitB12: 0, zinc: 0, folate: 0, vitD: 0,
     };
 
     let mealCount = 0;
-    for (const day of weekPlan) {
-      for (const meal of day.meals || []) {
+    // Average across all options for each meal type
+    for (const type of ['breakfast', 'lunch', 'dinner']) {
+      const meals = mealOptions[type] || [];
+      const typeTotals = { ...dailyTotals };
+      for (const key of Object.keys(typeTotals)) typeTotals[key] = 0;
+
+      for (const meal of meals) {
         const mealNutrition = estimateMealNutrition(meal.ingredients || []);
-        for (const key of Object.keys(weeklyTotals)) {
-          weeklyTotals[key] += mealNutrition[key];
+        for (const key of Object.keys(typeTotals)) {
+          typeTotals[key] += mealNutrition[key];
         }
         mealCount++;
       }
+
+      // Average for this meal type
+      const count = meals.length || 1;
+      for (const key of Object.keys(dailyTotals)) {
+        dailyTotals[key] += typeTotals[key] / count;
+      }
     }
 
-    // Daily averages
+    // dailyTotals now represents an average day
     const dailyAvg = {};
-    for (const key of Object.keys(weeklyTotals)) {
-      dailyAvg[key] = Math.round((weeklyTotals[key] / 7) * 10) / 10;
+    for (const key of Object.keys(dailyTotals)) {
+      dailyAvg[key] = Math.round(dailyTotals[key] * 10) / 10;
     }
 
     // Identify gaps (< 70% of RDA on average)

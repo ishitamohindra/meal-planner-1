@@ -5,6 +5,7 @@ import GroceryInput from './components/GroceryInput';
 import WeeklyPlan from './components/WeeklyPlan';
 import GapAnalysis from './components/GapAnalysis';
 import { generateMealPlan } from './utils/mealPrompts';
+import { getAllIngredients } from './utils/nutritionData';
 
 const TABS = [
   { id: 'groceries', label: 'Pantry', icon: ShoppingBasket },
@@ -117,8 +118,8 @@ function LandingHero({ onStart }) {
 export default function App() {
   const [screen, setScreen] = useState('landing'); // landing | input | plan
   const [activeTab, setActiveTab] = useState('groceries');
-  const [groceries, setGroceries] = useState([]);
-  const [weekPlan, setWeekPlan] = useState(null);
+  const [groceries, setGroceries] = useState(() => getAllIngredients());
+  const [mealPlan, setMealPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -130,7 +131,7 @@ export default function App() {
 
     try {
       const result = await generateMealPlan(groceries);
-      setWeekPlan(result.weekPlan);
+      setMealPlan(result.mealOptions);
       setScreen('plan');
       setActiveTab('plan');
     } catch (err) {
@@ -221,8 +222,8 @@ export default function App() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
-              {weekPlan ? (
-                <WeeklyPlan weekPlan={weekPlan} />
+              {mealPlan ? (
+                <WeeklyPlan mealOptions={mealPlan} />
               ) : (
                 <div className="text-center py-16 space-y-3">
                   <UtensilsCrossed className="w-12 h-12 text-charcoal-light/20 mx-auto" />
@@ -247,8 +248,8 @@ export default function App() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
-              {weekPlan ? (
-                <GapAnalysis weekPlan={weekPlan} />
+              {mealPlan ? (
+                <GapAnalysis mealOptions={mealPlan} />
               ) : (
                 <div className="text-center py-16 space-y-3">
                   <BarChart3 className="w-12 h-12 text-charcoal-light/20 mx-auto" />
@@ -274,7 +275,7 @@ export default function App() {
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
-            const hasContent = tab.id === 'groceries' || weekPlan;
+            const hasContent = tab.id === 'groceries' || mealPlan;
 
             return (
               <button

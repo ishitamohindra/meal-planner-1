@@ -162,3 +162,15 @@ export function estimateMealNutrition(ingredients) {
 
   return totals;
 }
+
+// Get all unique ingredients as { name } array (for default selection)
+export function getAllIngredients() {
+  const seen = new Set();
+  const all = [];
+  for (const items of Object.values(GROCERY_CATEGORIES)) {
+    for (const name of items) {
+      if (!seen.has(name)) { seen.add(name); all.push({ name }); }
+    }
+  }
+  return all;
+}
