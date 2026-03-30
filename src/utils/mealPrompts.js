@@ -72,8 +72,42 @@ export async function generateMealPlan(groceries) {
     throw new Error(err.error?.message || `API error: ${response.status}`);
   }
 
-  const data = await response.json();
-  const text = data.content[0].text;
+  // Handle both streaming (SSE) and non-streaming responses
+  const contentType = response.headers.get('content-type') || '';
+
+  let text;
+  if (contentType.includes('text/event-stream')) {
+    // Parse SSE stream and accumulate text blocks
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    text = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const event = JSON.parse(data);
+          if (event.type === 'content_block_delta' && event.delta?.text) {
+            text += event.delta.text;
+          }
+        } catch {}
+      }
+    }
+  } else {
+    // Non-streaming (local dev)
+    const data = await response.json();
+    text = data.content[0].text;
+  }
 
   // Parse JSON from response (handle potential markdown fences)
   const jsonMatch = text.match(/\{[\s\S]*\}/);
