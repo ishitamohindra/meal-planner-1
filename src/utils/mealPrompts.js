@@ -20,7 +20,9 @@ RULES:
 - Vary the meals — don't repeat the same dish more than twice in a week
 - Balance nutrition across the day
 - Include raita/curd/chaas as sides where appropriate
-- For each meal, estimate the key ingredients and their approximate quantities in grams
+- For each meal, list only the 3-5 KEY ingredients with grams (skip oil, salt, water, basic spices)
+- Keep descriptions under 15 words
+- CRITICAL: Output must be complete, valid JSON. Do not truncate.
 
 OUTPUT FORMAT — respond with valid JSON only, no markdown fences:
 {
@@ -59,7 +61,7 @@ export async function generateMealPlan(groceries) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 8000,
+      max_tokens: 16000,
       system: SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: buildUserPrompt(groceries) },
